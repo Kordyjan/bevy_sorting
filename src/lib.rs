@@ -13,6 +13,7 @@ use bevy::{
 #[cfg(test)]
 mod tests;
 
+/// System set marking all systems that reads value of T
 pub struct Reads<T: 'static>(PhantomData<fn() -> T>);
 
 impl<T: 'static> Default for Reads<T> {
@@ -61,6 +62,7 @@ impl<T> SystemSet for Reads<T> {
     }
 }
 
+/// System set for all systems that writes to T
 pub struct Writes<T: 'static>(PhantomData<fn() -> T>);
 
 impl<T: 'static> Default for Writes<T> {
@@ -109,11 +111,14 @@ impl<T> SystemSet for Writes<T> {
     }
 }
 
+/// Extension trait for systems allowing to clearly specify read and write constraint
 pub trait IntoSystemRW<M>: IntoSystemConfigs<M> {
+    /// Specifies that system reads from T
     fn reads<T: 'static>(self) -> NodeConfigs<Box<dyn System<In = (), Out = ()>>> {
         self.in_set(Reads::<T>::default())
     }
 
+    /// Specifies that system writes to T
     fn writes<T: 'static>(self) -> NodeConfigs<Box<dyn System<In = (), Out = ()>>> {
         self.in_set(Writes::<T>::default())
     }
@@ -121,10 +126,14 @@ pub trait IntoSystemRW<M>: IntoSystemConfigs<M> {
 
 impl<M, S: IntoSystemConfigs<M>> IntoSystemRW<M> for S {}
 
+/// Constraint for `App::configure_systems` specifying that all writes to T must be executed before
+/// the first read
 pub fn write_before_read<T: 'static>() -> NodeConfigs<Interned<dyn SystemSet>> {
     Writes::<T>::default().before(Reads::<T>::default())
 }
 
+/// Constraint for `App::configure_systems` specifying that all reads from T must be executed
+/// before the first write
 pub fn read_before_write<T: 'static>() -> NodeConfigs<Interned<dyn SystemSet>> {
     Reads::<T>::default().before(Writes::<T>::default())
 }
