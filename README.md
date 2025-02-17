@@ -4,9 +4,9 @@ Library for creating constraints for ordering bevy system.
 
 ## What's this
 
-The crates adds functions `reads` and `writes` that allows specifying how systems access data. The generic parameters for that function can be Components, Resources, Events or any other Rust type that can be associated by the user with notion of reading and writing.
+The crate adds functions `reads` and `writes` that allow specifying how systems access data. The generic parameters for that function can be Components, Resources, Events, or any other Rust type that the user can associate with the notion of reading and writing.
 
-For each of the types user can specify if all reads should be excuted before the first write or other way around - the first read should be after all the write operations.
+For each type, users can specify if all reads should be executed before the first write or the other way around - the first read should be after all the write operations.
 
 ## Example usages
 
@@ -63,7 +63,7 @@ fn main() {
 
 ```
 
-Systems will be executed in the following order `[read_map_config, select_gen_algorithm, generate_map]`. Therefore we can be sure that app will not panic due to missing resources.
+Systems will be executed in the following order: `[read_map_config, select_gen_algorithm, generate_map]`. Therefore, we can be sure that the app will not panic due to missing resources.
 
 ### Assuring that events are read in the same frame as they were emitted
 
@@ -100,8 +100,8 @@ fn main() {
 }
 ```
 
-`count_xp` will be executed before `update_stats` and `run_levelup_animation`. Two later can possibly be executed in parallel. There will be no 1-frame delay between level-up event being emmitted and read.
+`count_xp` will be executed before `update_stats` and `run_levelup_animation`. Two later can possibly be executed in parallel. There will be no 1-frame delay between a level-up event being emitted and read.
 
 ## It is quite verbose, isn't it?
 
-Yes. This is a first proof of concept. In the future I plan to add automatic detection of writes and reads based on system signatures.
+Yes. This is the first proof of concept. In the future, I plan to add automatic detection of writes and reads based on system signatures.
