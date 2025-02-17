@@ -3,5 +3,15 @@ name = "bevy_sorting"
 version = "0.1.0"
 edition = "2021"
 
+license-file = "LICENSE"
+description = "Sorting bevy systems based on reads and writes"
+readme = "README.md"
+homepage = "https://github.com/Kordyjan/bevy_sorting"
+repository = "https://github.com/Kordyjan/bevy_sorting"
+
+keywords = ["gamedev", "bevy", "ecs", "sorting", "systems"]
+categories = ["game-development"]
+
 [dependencies]
 bevy = "0.15.2"
+
