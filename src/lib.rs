@@ -1,5 +1,5 @@
 use std::{
-    any::{type_name, TypeId},
+    any::{ TypeId},
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
     marker::PhantomData,
@@ -9,8 +9,9 @@ use bevy::{
     ecs::{intern::Interned, label, schedule::NodeConfigs},
     prelude::{IntoSystemConfigs, IntoSystemSetConfigs, System, SystemSet},
 };
+use tynm::type_name;
 
-pub mod automagic;
+mod automagic;
 
 #[cfg(test)]
 mod tests;

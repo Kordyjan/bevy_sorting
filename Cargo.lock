@@ -161,6 +161,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansi_term"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -205,6 +214,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "assert_unordered"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c74323b7881323eb351134e08ee5331594826789557afef8e309baf481b2264"
+dependencies = [
+ "ansi_term",
 ]
 
 [[package]]
@@ -1001,7 +1019,9 @@ dependencies = [
 name = "bevy_sorting"
 version = "0.1.0"
 dependencies = [
+ "assert_unordered",
  "bevy",
+ "tynm",
 ]
 
 [[package]]
@@ -3909,6 +3929,15 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "static_assertions",
+]
+
+[[package]]
+name = "tynm"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd30d05e69d1478e13fe3e7a853409cfec82cebc2cf9b8d613b3c6b0081781ed"
+dependencies = [
+ "nom",
 ]
 
 [[package]]
