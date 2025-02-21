@@ -10,6 +10,8 @@ use bevy::{
     prelude::{IntoSystemConfigs, IntoSystemSetConfigs, System, SystemSet},
 };
 
+pub mod automagic;
+
 #[cfg(test)]
 mod tests;
 
