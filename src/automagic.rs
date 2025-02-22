@@ -1,6 +1,6 @@
 use bevy::{
     ecs::schedule::SystemConfigs,
-    prelude::{Event, EventReader, EventWriter, IntoSystemConfigs, SystemParamFunction},
+    prelude::{Commands, Event, EventReader, EventWriter, IntoSystemConfigs, SystemParamFunction},
 };
 
 use crate::IntoSystemRW;
@@ -23,6 +23,12 @@ impl<E: Event> AutoSetArg for EventReader<'_, '_, E> {
 impl<E: Event> AutoSetArg for EventWriter<'_, E> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         sys.writes::<E>()
+    }
+}
+
+impl AutoSetArg for Commands<'_, '_> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
     }
 }
 

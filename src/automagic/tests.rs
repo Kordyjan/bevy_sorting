@@ -104,6 +104,21 @@ fn miexed_event_sorting() {
     );
 }
 
+#[test]
+fn commands_do_not_create_autoset() {
+    let mut app = App::new();
+    app.add_systems(
+        Update,
+        (
+            commands_only.in_auto_sets(),
+            commands_and_reader.in_auto_sets(),
+        ),
+    );
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    assert_eq!(graph.system_sets().count(), 3);
+}
+
 fn find_set(graph: &ScheduleGraph, name: &str) -> NodeId {
     graph
         .system_sets()
@@ -180,3 +195,7 @@ fn two_writers(_writer: EventWriter<OtherEvent>, _writer2: EventWriter<SomeEvent
 fn other_writer_only(_writer: EventWriter<OtherEvent>) {}
 
 fn mixed_events(_writer: EventWriter<SomeEvent>, _reader: EventReader<OtherEvent>) {}
+
+fn commands_only(_commands: Commands) {}
+
+fn commands_and_reader(_commands: Commands, _reader: EventReader<SomeEvent>) {}
