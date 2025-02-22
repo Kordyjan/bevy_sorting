@@ -1021,6 +1021,7 @@ version = "0.1.0"
 dependencies = [
  "assert_unordered",
  "bevy",
+ "impl-trait-for-tuples",
  "tynm",
 ]
 
@@ -2340,6 +2341,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12f97096f508d54f8f8ab8957862eee2ccd628847b6217af1a335e1c44dee578"
 dependencies = [
  "arrayvec",
+]
+
+[[package]]
+name = "impl-trait-for-tuples"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0eb5a3343abf848c0984fe4604b2b105da9539376e24fc0a3b0007411ae4fd9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

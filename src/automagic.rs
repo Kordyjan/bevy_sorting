@@ -5,6 +5,8 @@ use bevy::{
 
 use crate::IntoSystemRW;
 
+use impl_trait_for_tuples::impl_for_tuples;
+
 #[cfg(test)]
 mod tests;
 
@@ -24,9 +26,12 @@ impl<E: Event> AutoSetArg for EventWriter<'_, E> {
     }
 }
 
-impl<T: AutoSetArg> AutoSetArg for (T,) {
+#[allow(clippy::let_and_return)]
+#[impl_for_tuples(0, 15)]
+impl AutoSetArg for Tuple {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
-        T::apply(sys)
+        for_tuples!( #( let sys = <Tuple as AutoSetArg>::apply(sys); )* );
+        sys
     }
 }
 

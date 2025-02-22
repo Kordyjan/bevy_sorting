@@ -34,6 +34,76 @@ fn simple_event_sorting() {
     );
 }
 
+#[test]
+fn double_event_sorting() {
+    let mut app = App::new();
+    app.add_systems(
+        Update,
+        (
+            some_reader_only.in_auto_sets(),
+            two_writers.in_auto_sets(),
+            two_readers.in_auto_sets(),
+            some_writer_only.in_auto_sets(),
+        ),
+    );
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    let (read_some_set, write_some_set) = find_set_pair(graph, "SomeEvent");
+    let (read_other_set, write_other_set) = find_set_pair(graph, "OtherEvent");
+    let reader_only_system = find_system(graph, &some_reader_only);
+    let writer_only_system = find_system(graph, &some_writer_only);
+    let two_readers_system = find_system(graph, &two_readers);
+    let two_writers_system = find_system(graph, &two_writers);
+
+    assert_eq_unordered_sort!(
+        vec![reader_only_system, two_readers_system],
+        systems_for_set(graph, read_some_set)
+    );
+    assert_eq_unordered_sort!(
+        vec![writer_only_system, two_writers_system],
+        systems_for_set(graph, write_some_set)
+    );
+    assert_eq_unordered_sort!(
+        vec![two_readers_system],
+        systems_for_set(graph, read_other_set)
+    );
+    assert_eq_unordered_sort!(
+        vec![two_writers_system],
+        systems_for_set(graph, write_other_set)
+    );
+}
+
+#[test]
+fn miexed_event_sorting() {
+    let mut app = App::new();
+    app.add_systems(
+        Update,
+        (
+            some_reader_only.in_auto_sets(),
+            other_writer_only.in_auto_sets(),
+            mixed_events.in_auto_sets(),
+        ),
+    );
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    let (read_some_set, write_some_set) = find_set_pair(graph, "SomeEvent");
+    let (read_other_set, write_other_set) = find_set_pair(graph, "OtherEvent");
+    let reader_only_system = find_system(graph, &some_reader_only);
+    let other_writer_system = find_system(graph, &other_writer_only);
+    let mixed_system = find_system(graph, &mixed_events);
+
+    assert_eq_unordered_sort!(
+        vec![reader_only_system],
+        systems_for_set(graph, read_some_set)
+    );
+    assert_eq_unordered_sort!(vec![mixed_system], systems_for_set(graph, write_some_set));
+    assert_eq_unordered_sort!(vec![mixed_system], systems_for_set(graph, read_other_set));
+    assert_eq_unordered_sort!(
+        vec![other_writer_system],
+        systems_for_set(graph, write_other_set)
+    );
+}
+
 fn find_set(graph: &ScheduleGraph, name: &str) -> NodeId {
     graph
         .system_sets()
@@ -90,6 +160,9 @@ struct Something;
 #[derive(Event)]
 struct SomeEvent;
 
+#[derive(Event)]
+struct OtherEvent;
+
 #[derive(Component)]
 struct SomeData;
 
@@ -99,3 +172,11 @@ struct OtherData;
 fn some_reader_only(_reader: EventReader<SomeEvent>) {}
 
 fn some_writer_only(_writer: EventWriter<SomeEvent>) {}
+
+fn two_readers(_reader: EventReader<SomeEvent>, _reader2: EventReader<OtherEvent>) {}
+
+fn two_writers(_writer: EventWriter<OtherEvent>, _writer2: EventWriter<SomeEvent>) {}
+
+fn other_writer_only(_writer: EventWriter<OtherEvent>) {}
+
+fn mixed_events(_writer: EventWriter<SomeEvent>, _reader: EventReader<OtherEvent>) {}

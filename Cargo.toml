@@ -14,6 +14,7 @@ categories = ["game-development"]
 
 [dependencies]
 bevy = "0.15.2"
+impl-trait-for-tuples = "0.2.3"
 tynm = "0.1.10"
 
 [dev-dependencies]
