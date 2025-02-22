@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
 use assert_unordered::assert_eq_unordered_sort;
 use bevy::{
@@ -119,6 +119,63 @@ fn commands_do_not_create_autoset() {
     assert_eq!(graph.system_sets().count(), 3);
 }
 
+#[test]
+fn simple_resources_sorting() {
+    let mut app = App::new();
+    app.add_systems(
+        Update,
+        (
+            resource_only.in_auto_sets(),
+            resource_mut_only.in_auto_sets(),
+        ),
+    );
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    let (read_something_set, write_something_set) = find_set_pair(graph, "Something");
+    let res_system = find_system(graph, &resource_only);
+    let res_mut_system = find_system(graph, &resource_mut_only);
+
+    assert_eq_unordered_sort!(vec![res_system], systems_for_set(graph, read_something_set));
+
+    assert_eq_unordered_sort!(
+        vec![res_mut_system],
+        systems_for_set(graph, write_something_set)
+    )
+}
+
+#[test]
+fn mixed_resource_sorting() {
+    let mut app = App::new();
+    app.add_systems(
+        Update,
+        (
+            resource_mixed.in_auto_sets(),
+            resource_mut_only.in_auto_sets(),
+            other_res_only.in_auto_sets(),
+        ),
+    );
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    let (read_something_set, write_something_set) = find_set_pair(graph, "Something");
+    let (read_other_set, write_other_set) = find_set_pair(graph, "SomethingElse");
+    let something_mut_system = find_system(graph, &resource_mut_only);
+    let mixed_system = find_system(graph, &resource_mixed);
+    let other_system = find_system(graph, &other_res_only);
+
+    assert_eq_unordered_sort!(
+        vec![mixed_system],
+        systems_for_set(graph, read_something_set)
+    );
+
+    assert_eq_unordered_sort!(
+        vec![something_mut_system],
+        systems_for_set(graph, write_something_set)
+    );
+
+    assert_eq_unordered_sort!(vec![other_system], systems_for_set(graph, read_other_set));
+
+    assert_eq_unordered_sort!(vec![mixed_system], systems_for_set(graph, write_other_set));
+}
 fn find_set(graph: &ScheduleGraph, name: &str) -> NodeId {
     graph
         .system_sets()
@@ -172,6 +229,9 @@ fn debug_graphs(schedule: &Schedule) {
 #[derive(Resource)]
 struct Something;
 
+#[derive(Resource)]
+struct SomethingElse;
+
 #[derive(Event)]
 struct SomeEvent;
 
@@ -199,3 +259,11 @@ fn mixed_events(_writer: EventWriter<SomeEvent>, _reader: EventReader<OtherEvent
 fn commands_only(_commands: Commands) {}
 
 fn commands_and_reader(_commands: Commands, _reader: EventReader<SomeEvent>) {}
+
+fn resource_only(_resource: Res<Something>) {}
+
+fn resource_mut_only(_resource: ResMut<Something>) {}
+
+fn other_res_only(_resource: Res<SomethingElse>) {}
+
+fn resource_mixed(_read: Res<Something>, _write: ResMut<SomethingElse>) {}
