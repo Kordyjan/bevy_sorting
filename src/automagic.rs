@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::schedule::SystemConfigs,
+    ecs::{schedule::SystemConfigs, system::SystemParam},
     prelude::{
         Commands, Event, EventReader, EventWriter, IntoSystemConfigs, Res, ResMut, Resource,
         SystemParamFunction,
@@ -29,12 +29,6 @@ impl<E: Event> AutoSetArg for EventWriter<'_, E> {
     }
 }
 
-impl AutoSetArg for Commands<'_, '_> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
-        sys
-    }
-}
-
 impl<R: Resource> AutoSetArg for Res<'_, R> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         sys.reads::<R>()
@@ -44,6 +38,16 @@ impl<R: Resource> AutoSetArg for Res<'_, R> {
 impl<R: Resource> AutoSetArg for ResMut<'_, R> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         sys.writes::<R>()
+    }
+}
+
+trait NoInfer {}
+
+impl NoInfer for Commands<'_, '_> {}
+
+impl<T: NoInfer> AutoSetArg for T {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
     }
 }
 
