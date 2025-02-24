@@ -1,8 +1,27 @@
+use std::marker::PhantomData;
+
 use bevy::{
-    ecs::{schedule::SystemConfigs, system::SystemParam},
+    diagnostic::Diagnostics,
+    ecs::{
+        archetype::Archetypes,
+        bundle::Bundles,
+        component::{ComponentIdFor, Components},
+        entity::Entities,
+        removal_detection::RemovedComponentEvents,
+        schedule::SystemConfigs,
+        system::{DynSystemParam, SystemBuffer, SystemChangeTick, SystemName},
+        world::{DeferredWorld, WorldId},
+    },
     prelude::{
-        Commands, Event, EventReader, EventWriter, IntoSystemConfigs, Res, ResMut, Resource,
-        SystemParamFunction,
+        Commands, Component, Deferred, Event, EventReader, EventWriter, FilteredResources,
+        FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local, MeshRayCast, ParallelCommands,
+        PickingEventWriters, RemovedComponents, Res, ResMut, Resource, SystemParamFunction,
+        TransformHelper, World,
+    },
+    render::texture::FallbackImageMsaa,
+    ui::{
+        experimental::{UiChildren, UiRootNodes},
+        DefaultUiCamera,
     },
 };
 
@@ -44,6 +63,62 @@ impl<R: Resource> AutoSetArg for ResMut<'_, R> {
 trait NoInfer {}
 
 impl NoInfer for Commands<'_, '_> {}
+
+impl<T> NoInfer for PhantomData<T> {}
+
+impl<T> NoInfer for Vec<T> {}
+
+impl NoInfer for &World {}
+
+impl NoInfer for Diagnostics<'_, '_> {}
+
+impl NoInfer for DefaultUiCamera<'_, '_> {}
+
+impl NoInfer for FilteredResources<'_, '_> {}
+
+impl NoInfer for FilteredResourcesMut<'_, '_> {}
+
+impl NoInfer for MeshRayCast<'_, '_> {}
+
+impl NoInfer for ParallelCommands<'_, '_> {}
+
+impl NoInfer for PickingEventWriters<'_> {}
+
+impl NoInfer for TransformHelper<'_, '_> {}
+
+impl NoInfer for FallbackImageMsaa<'_> {}
+
+impl NoInfer for UiChildren<'_, '_> {}
+
+impl NoInfer for UiRootNodes<'_, '_> {}
+
+impl NoInfer for WorldId {}
+
+impl NoInfer for DynSystemParam<'_, '_> {}
+
+impl NoInfer for SystemChangeTick {}
+
+impl NoInfer for SystemName<'_> {}
+
+impl NoInfer for &Archetypes {}
+
+impl NoInfer for &Bundles {}
+
+impl NoInfer for &Components {}
+
+impl NoInfer for &Entities {}
+
+impl NoInfer for &RemovedComponentEvents {}
+
+impl<T: FromWorld + Send> NoInfer for Local<'_, T> {}
+
+impl NoInfer for DeferredWorld<'_> {}
+
+impl<T: SystemBuffer> NoInfer for Deferred<'_, T> {}
+
+impl<T: Component> NoInfer for RemovedComponents<'_, '_, T> {}
+
+impl<T: Component> NoInfer for ComponentIdFor<'_, T> {}
 
 impl<T: NoInfer> AutoSetArg for T {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
