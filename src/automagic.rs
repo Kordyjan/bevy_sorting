@@ -18,14 +18,19 @@ use bevy::{
         },
     },
     prelude::{
-        Bundle, Commands, Component, Deferred, Entity, EntityMut, EntityRef, Event, EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local, MeshRayCast, NonSend, NonSendMut, ParallelCommands, PickingEventWriters, Query, RemovedComponents, Res, ResMut, Resource, SystemParamFunction, TransformHelper, World
+        Bundle, Commands, Component, Deferred, Entity, EntityMut, EntityRef, Event, EventReader,
+        EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local,
+        MeshRayCast, NonSend, NonSendMut, ParallelCommands, PickingEventWriters, Query,
+        RemovedComponents, Res, ResMut, Resource, SystemParamFunction, TransformHelper, World,
     },
     render::{
         sync_world::{MainEntity, RenderEntity},
         texture::FallbackImageMsaa,
     },
     ui::{
-        self, experimental::{UiChildren, UiRootNodes}, picking_backend, DefaultUiCamera
+        self,
+        experimental::{UiChildren, UiRootNodes},
+        picking_backend, DefaultUiCamera,
     },
 };
 
@@ -86,6 +91,18 @@ trait AutoSetArgInQuery {
     fn apply(sys: SystemConfigs) -> SystemConfigs;
 }
 
+impl<T: Component> AutoSetArgInQuery for &T {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<T>()
+    }
+}
+
+impl<T: Component> AutoSetArgInQuery for &mut T {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.writes::<T>()
+    }
+}
+
 impl<T: AutoSetArgInQuery> AutoSetArgInQuery for Option<T> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         T::apply(sys)
@@ -98,41 +115,91 @@ impl AutoSetArgInQuery for NameOrEntity {
     }
 }
 
-trait NoInferInQuery {}
+impl<T> AutoSetArgInQuery for PhantomData<T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl<T> NoInferInQuery for PhantomData<T> {}
+impl AutoSetArgInQuery for Entity {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for &Archetype {}
+impl AutoSetArgInQuery for MainEntity {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for Entity {}
+impl AutoSetArgInQuery for RenderEntity {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for MainEntity {}
+impl AutoSetArgInQuery for picking_backend::NodeQuery {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for RenderEntity {}
+impl AutoSetArgInQuery for picking_backend::NodeQueryReadOnly {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for picking_backend::NodeQuery {}
+impl AutoSetArgInQuery for ui::NodeQuery {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for picking_backend::NodeQueryReadOnly {}
+impl AutoSetArgInQuery for ui::NodeQueryReadOnly {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for ui::NodeQuery {}
+impl AutoSetArgInQuery for EntityLocation {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for ui::NodeQueryReadOnly {}
+impl AutoSetArgInQuery for EntityMut<'_> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for EntityLocation {}
+impl AutoSetArgInQuery for EntityRef<'_> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for EntityMut<'_> {}
+impl AutoSetArgInQuery for FilteredEntityMut<'_> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for EntityRef<'_> {}
+impl AutoSetArgInQuery for FilteredEntityRef<'_> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for FilteredEntityMut<'_> {}
+impl<B: Bundle> AutoSetArgInQuery for EntityMutExcept<'_, B> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
 
-impl NoInferInQuery for FilteredEntityRef<'_> {}
-
-impl<B: Bundle> NoInferInQuery for EntityMutExcept<'_, B> {}
-
-impl<B: Bundle> NoInferInQuery for EntityRefExcept<'_, B> {}
-
-impl<T: NoInferInQuery> AutoSetArgInQuery for T {
+impl<B: Bundle> AutoSetArgInQuery for EntityRefExcept<'_, B> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         sys
     }

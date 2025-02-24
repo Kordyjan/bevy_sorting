@@ -176,6 +176,24 @@ fn mixed_resource_sorting() {
 
     assert_eq_unordered_sort!(vec![mixed_system], systems_for_set(graph, write_other_set));
 }
+
+#[test]
+fn queries_create_autosets() {
+    let mut app = App::new();
+    app.add_systems(Update, with_query.in_auto_sets());
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    let read_some_data_set = find_set(graph, "Reads(\"SomeData\")");
+    let write_other_data_set = find_set(graph, "Writes(\"OtherData\")");
+    let system = find_system(graph, &with_query);
+
+    assert_eq!(3, graph.system_sets().count());
+
+    assert_eq_unordered_sort!(vec![system], systems_for_set(graph, read_some_data_set));
+
+    assert_eq_unordered_sort!(vec![system], systems_for_set(graph, write_other_data_set))
+}
+
 fn find_set(graph: &ScheduleGraph, name: &str) -> NodeId {
     graph
         .system_sets()
@@ -267,3 +285,5 @@ fn resource_mut_only(_resource: ResMut<Something>) {}
 fn other_res_only(_resource: Res<SomethingElse>) {}
 
 fn resource_mixed(_read: Res<Something>, _write: ResMut<SomethingElse>) {}
+
+fn with_query(_q: Query<(&SomeData, &mut OtherData, Entity)>) {}
