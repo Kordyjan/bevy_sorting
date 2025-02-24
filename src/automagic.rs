@@ -1,27 +1,31 @@
 use std::marker::PhantomData;
 
 use bevy::{
+    core::{Name, NameOrEntity},
     diagnostic::Diagnostics,
     ecs::{
-        archetype::Archetypes,
+        archetype::{Archetype, Archetypes},
         bundle::Bundles,
         component::{ComponentIdFor, Components},
-        entity::Entities,
+        entity::{Entities, EntityLocation},
+        query::QueryData,
         removal_detection::RemovedComponentEvents,
         schedule::SystemConfigs,
         system::{DynSystemParam, SystemBuffer, SystemChangeTick, SystemName},
-        world::{DeferredWorld, WorldId},
+        world::{
+            DeferredWorld, EntityMutExcept, EntityRefExcept, FilteredEntityMut, FilteredEntityRef,
+            WorldId,
+        },
     },
     prelude::{
-        Commands, Component, Deferred, Event, EventReader, EventWriter, FilteredResources,
-        FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local, MeshRayCast, NonSend,
-        NonSendMut, ParallelCommands, PickingEventWriters, RemovedComponents, Res, ResMut,
-        Resource, SystemParamFunction, TransformHelper, World,
+        Bundle, Commands, Component, Deferred, Entity, EntityMut, EntityRef, Event, EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local, MeshRayCast, NonSend, NonSendMut, ParallelCommands, PickingEventWriters, Query, RemovedComponents, Res, ResMut, Resource, SystemParamFunction, TransformHelper, World
     },
-    render::texture::FallbackImageMsaa,
+    render::{
+        sync_world::{MainEntity, RenderEntity},
+        texture::FallbackImageMsaa,
+    },
     ui::{
-        experimental::{UiChildren, UiRootNodes},
-        DefaultUiCamera,
+        self, experimental::{UiChildren, UiRootNodes}, picking_backend, DefaultUiCamera
     },
 };
 
@@ -75,6 +79,77 @@ impl<T: 'static> AutoSetArg for NonSendMut<'_, T> {
 impl<T: AutoSetArg> AutoSetArg for Option<T> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         T::apply(sys)
+    }
+}
+
+trait AutoSetArgInQuery {
+    fn apply(sys: SystemConfigs) -> SystemConfigs;
+}
+
+impl<T: AutoSetArgInQuery> AutoSetArgInQuery for Option<T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        T::apply(sys)
+    }
+}
+
+impl AutoSetArgInQuery for NameOrEntity {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<Name>()
+    }
+}
+
+trait NoInferInQuery {}
+
+impl<T> NoInferInQuery for PhantomData<T> {}
+
+impl NoInferInQuery for &Archetype {}
+
+impl NoInferInQuery for Entity {}
+
+impl NoInferInQuery for MainEntity {}
+
+impl NoInferInQuery for RenderEntity {}
+
+impl NoInferInQuery for picking_backend::NodeQuery {}
+
+impl NoInferInQuery for picking_backend::NodeQueryReadOnly {}
+
+impl NoInferInQuery for ui::NodeQuery {}
+
+impl NoInferInQuery for ui::NodeQueryReadOnly {}
+
+impl NoInferInQuery for EntityLocation {}
+
+impl NoInferInQuery for EntityMut<'_> {}
+
+impl NoInferInQuery for EntityRef<'_> {}
+
+impl NoInferInQuery for FilteredEntityMut<'_> {}
+
+impl NoInferInQuery for FilteredEntityRef<'_> {}
+
+impl<B: Bundle> NoInferInQuery for EntityMutExcept<'_, B> {}
+
+impl<B: Bundle> NoInferInQuery for EntityRefExcept<'_, B> {}
+
+impl<T: NoInferInQuery> AutoSetArgInQuery for T {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys
+    }
+}
+
+#[allow(clippy::let_and_return)]
+#[impl_for_tuples(0, 15)]
+impl AutoSetArgInQuery for Tuple {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        for_tuples!( #( let sys = <Tuple as AutoSetArgInQuery>::apply(sys); )* );
+        sys
+    }
+}
+
+impl<D: AutoSetArgInQuery + QueryData> AutoSetArg for Query<'_, '_, D> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        D::apply(sys)
     }
 }
 
