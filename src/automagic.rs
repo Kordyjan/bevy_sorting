@@ -14,9 +14,9 @@ use bevy::{
     },
     prelude::{
         Commands, Component, Deferred, Event, EventReader, EventWriter, FilteredResources,
-        FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local, MeshRayCast, ParallelCommands,
-        PickingEventWriters, RemovedComponents, Res, ResMut, Resource, SystemParamFunction,
-        TransformHelper, World,
+        FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local, MeshRayCast, NonSend,
+        NonSendMut, ParallelCommands, PickingEventWriters, RemovedComponents, Res, ResMut,
+        Resource, SystemParamFunction, TransformHelper, World,
     },
     render::texture::FallbackImageMsaa,
     ui::{
@@ -57,6 +57,24 @@ impl<R: Resource> AutoSetArg for Res<'_, R> {
 impl<R: Resource> AutoSetArg for ResMut<'_, R> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         sys.writes::<R>()
+    }
+}
+
+impl<T: 'static> AutoSetArg for NonSend<'_, T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<T>()
+    }
+}
+
+impl<T: 'static> AutoSetArg for NonSendMut<'_, T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.writes::<T>()
+    }
+}
+
+impl<T: AutoSetArg> AutoSetArg for Option<T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        T::apply(sys)
     }
 }
 
