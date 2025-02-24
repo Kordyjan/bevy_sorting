@@ -18,10 +18,11 @@ use bevy::{
         },
     },
     prelude::{
-        Bundle, Commands, Component, Deferred, Entity, EntityMut, EntityRef, Event, EventReader,
-        EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, IntoSystemConfigs, Local,
-        MeshRayCast, NonSend, NonSendMut, ParallelCommands, PickingEventWriters, Query,
-        RemovedComponents, Res, ResMut, Resource, SystemParamFunction, TransformHelper, World,
+        AnyOf, Bundle, Commands, Component, Deferred, Entity, EntityMut, EntityRef, Event,
+        EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, Has,
+        IntoSystemConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, ParallelCommands,
+        PickingEventWriters, Query, Ref, RemovedComponents, Res, ResMut, Resource,
+        SystemParamFunction, TransformHelper, World,
     },
     render::{
         sync_world::{MainEntity, RenderEntity},
@@ -97,13 +98,37 @@ impl<T: Component> AutoSetArgInQuery for &T {
     }
 }
 
+impl<T: Component> AutoSetArgInQuery for Ref<'_, T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<T>()
+    }
+}
+
 impl<T: Component> AutoSetArgInQuery for &mut T {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         sys.writes::<T>()
     }
 }
 
+impl<T: Component> AutoSetArgInQuery for Mut<'_, T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.writes::<T>()
+    }
+}
+
+impl<T: Component> AutoSetArgInQuery for Has<T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<T>()
+    }
+}
+
 impl<T: AutoSetArgInQuery> AutoSetArgInQuery for Option<T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        T::apply(sys)
+    }
+}
+
+impl<T: AutoSetArgInQuery> AutoSetArgInQuery for AnyOf<T> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         T::apply(sys)
     }
