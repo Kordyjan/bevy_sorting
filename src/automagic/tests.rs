@@ -216,6 +216,30 @@ fn query_filters_influence_autosets() {
     }
 }
 
+#[test]
+fn big_system_test() {
+    let mut app = App::new();
+    app.add_systems(Update, big_system.in_auto_sets());
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    let read_some_data_set = find_set(graph, "Reads(\"SomeData\")");
+    let write_other_data_set = find_set(graph, "Writes(\"OtherData\")");
+    let write_third_data_set = find_set(graph, "Writes(\"DataNumberThree\")");
+    let read_fourth_data_set = find_set(graph, "Reads(\"DataNumberFour\")");
+    let write_res_set = find_set(graph, "Writes(\"Something\")");
+    let system = find_system(graph, &big_system);
+
+    for set in [
+        read_some_data_set,
+        write_other_data_set,
+        write_third_data_set,
+        read_fourth_data_set,
+        write_res_set,
+    ] {
+        assert_eq_unordered_sort!(vec![system], systems_for_set(graph, set));
+    }
+}
+
 fn find_set(graph: &ScheduleGraph, name: &str) -> NodeId {
     graph
         .system_sets()
@@ -324,5 +348,15 @@ fn with_query_filter(
             Or<(Added<DataNumberThree>, Changed<DataNumberFour>)>,
         ),
     >,
+) {
+}
+
+fn big_system(
+    _ps: ParamSet<(
+        ParallelCommands,
+        Query<(&mut OtherData, &mut DataNumberThree), With<SomeData>>,
+        ResMut<Something>,
+        Option<Single<(&mut DataNumberThree, &DataNumberFour), Changed<SomeData>>>,
+    )>,
 ) {
 }

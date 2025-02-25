@@ -11,7 +11,7 @@ use bevy::{
         query::{QueryData, QueryFilter},
         removal_detection::RemovedComponentEvents,
         schedule::SystemConfigs,
-        system::{DynSystemParam, SystemBuffer, SystemChangeTick, SystemName},
+        system::{DynSystemParam, SystemBuffer, SystemChangeTick, SystemName, SystemParam},
         world::{
             DeferredWorld, EntityMutExcept, EntityRefExcept, FilteredEntityMut, FilteredEntityRef,
             WorldId,
@@ -21,8 +21,8 @@ use bevy::{
         Added, AnyOf, Bundle, Changed, Commands, Component, Deferred, Entity, EntityMut, EntityRef,
         Event, EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, Has,
         IntoSystemConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, Or, ParallelCommands,
-        PickingEventWriters, Populated, Query, Ref, RemovedComponents, Res, ResMut, Resource,
-        Single, SystemParamFunction, TransformHelper, With, Without, World,
+        ParamSet, PickingEventWriters, Populated, Query, Ref, RemovedComponents, Res, ResMut,
+        Resource, Single, SystemParamFunction, TransformHelper, With, Without, World,
     },
     render::{
         sync_world::{MainEntity, RenderEntity},
@@ -306,6 +306,135 @@ impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter>
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         let sys = D::apply(sys);
         F::apply(sys)
+    }
+}
+
+impl<P0> AutoSetArg for ParamSet<'_, '_, (P0,)>
+where
+    P0: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        <P0 as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<P0, P1> AutoSetArg for ParamSet<'_, '_, (P0, P1)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = <P0 as AutoSetArg>::apply(sys);
+        <P1 as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<P0, P1, P2> AutoSetArg for ParamSet<'_, '_, (P0, P1, P2)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+    P2: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = <P0 as AutoSetArg>::apply(sys);
+        let sys = <P1 as AutoSetArg>::apply(sys);
+        <P2 as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<P0, P1, P2, P3> AutoSetArg for ParamSet<'_, '_, (P0, P1, P2, P3)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+    P2: SystemParam + AutoSetArg,
+    P3: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = <P0 as AutoSetArg>::apply(sys);
+        let sys = <P1 as AutoSetArg>::apply(sys);
+        let sys = <P2 as AutoSetArg>::apply(sys);
+        <P3 as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<P0, P1, P2, P3, P4> AutoSetArg for ParamSet<'_, '_, (P0, P1, P2, P3, P4)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+    P2: SystemParam + AutoSetArg,
+    P3: SystemParam + AutoSetArg,
+    P4: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = <P0 as AutoSetArg>::apply(sys);
+        let sys = <P1 as AutoSetArg>::apply(sys);
+        let sys = <P2 as AutoSetArg>::apply(sys);
+        let sys = <P3 as AutoSetArg>::apply(sys);
+        <P4 as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<P0, P1, P2, P3, P4, P5> AutoSetArg for ParamSet<'_, '_, (P0, P1, P2, P3, P4, P5)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+    P2: SystemParam + AutoSetArg,
+    P3: SystemParam + AutoSetArg,
+    P4: SystemParam + AutoSetArg,
+    P5: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = <P0 as AutoSetArg>::apply(sys);
+        let sys = <P1 as AutoSetArg>::apply(sys);
+        let sys = <P2 as AutoSetArg>::apply(sys);
+        let sys = <P3 as AutoSetArg>::apply(sys);
+        let sys = <P4 as AutoSetArg>::apply(sys);
+        <P5 as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<P0, P1, P2, P3, P4, P5, P6> AutoSetArg for ParamSet<'_, '_, (P0, P1, P2, P3, P4, P5, P6)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+    P2: SystemParam + AutoSetArg,
+    P3: SystemParam + AutoSetArg,
+    P4: SystemParam + AutoSetArg,
+    P5: SystemParam + AutoSetArg,
+    P6: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = <P0 as AutoSetArg>::apply(sys);
+        let sys = <P1 as AutoSetArg>::apply(sys);
+        let sys = <P2 as AutoSetArg>::apply(sys);
+        let sys = <P3 as AutoSetArg>::apply(sys);
+        let sys = <P4 as AutoSetArg>::apply(sys);
+        let sys = <P5 as AutoSetArg>::apply(sys);
+        <P6 as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<P0, P1, P2, P3, P4, P5, P6, P7> AutoSetArg
+    for ParamSet<'_, '_, (P0, P1, P2, P3, P4, P5, P6, P7)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+    P2: SystemParam + AutoSetArg,
+    P3: SystemParam + AutoSetArg,
+    P4: SystemParam + AutoSetArg,
+    P5: SystemParam + AutoSetArg,
+    P6: SystemParam + AutoSetArg,
+    P7: SystemParam + AutoSetArg,
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = <P0 as AutoSetArg>::apply(sys);
+        let sys = <P1 as AutoSetArg>::apply(sys);
+        let sys = <P2 as AutoSetArg>::apply(sys);
+        let sys = <P3 as AutoSetArg>::apply(sys);
+        let sys = <P4 as AutoSetArg>::apply(sys);
+        let sys = <P5 as AutoSetArg>::apply(sys);
+        let sys = <P6 as AutoSetArg>::apply(sys);
+        <P7 as AutoSetArg>::apply(sys)
     }
 }
 
