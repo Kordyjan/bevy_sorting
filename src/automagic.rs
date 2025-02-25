@@ -11,7 +11,10 @@ use bevy::{
         query::{QueryData, QueryFilter},
         removal_detection::RemovedComponentEvents,
         schedule::SystemConfigs,
-        system::{DynSystemParam, SystemBuffer, SystemChangeTick, SystemName, SystemParam},
+        system::{
+            DynSystemParam, ReadOnlySystemParam, StaticSystemParam, SystemBuffer, SystemChangeTick,
+            SystemName, SystemParam,
+        },
         world::{
             DeferredWorld, EntityMutExcept, EntityRefExcept, FilteredEntityMut, FilteredEntityRef,
             WorldId,
@@ -19,15 +22,18 @@ use bevy::{
     },
     prelude::{
         Added, AnyOf, Bundle, Changed, Commands, Component, Deferred, Entity, EntityMut, EntityRef,
-        Event, EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, Has,
-        IntoSystemConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, Or, ParallelCommands,
-        ParamSet, PickingEventWriters, Populated, Query, Ref, RemovedComponents, Res, ResMut,
-        Resource, Single, SystemParamFunction, TransformHelper, With, Without, World,
+        Event, EventMutator, EventReader, EventWriter, FilteredResources, FilteredResourcesMut,
+        FromWorld, GizmoConfigGroup, Gizmos, Has, IntoSystemConfigs, Local, MeshRayCast, Mut,
+        NonSend, NonSendMut, Or, ParallelCommands, ParamSet, PickingEventWriters, Populated, Query,
+        Ref, RemovedComponents, Res, ResMut, Resource, Single, SystemParamFunction,
+        TransformHelper, With, Without, World,
     },
     render::{
         sync_world::{MainEntity, RenderEntity},
         texture::FallbackImageMsaa,
+        Extract,
     },
+    text::{TextReader, TextRoot, TextWriter},
     ui::{
         self,
         experimental::{UiChildren, UiRootNodes},
@@ -53,6 +59,12 @@ impl<E: Event> AutoSetArg for EventReader<'_, '_, E> {
 }
 
 impl<E: Event> AutoSetArg for EventWriter<'_, E> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.writes::<E>()
+    }
+}
+
+impl<E: Event> AutoSetArg for EventMutator<'_, '_, E> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         sys.writes::<E>()
     }
@@ -309,6 +321,30 @@ impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter>
     }
 }
 
+impl<T: AutoSetArg + ReadOnlySystemParam> AutoSetArg for Extract<'_, '_, T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        <T as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<T: AutoSetArg + SystemParam> AutoSetArg for StaticSystemParam<'_, '_, T> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        <T as AutoSetArg>::apply(sys)
+    }
+}
+
+impl<R: TextRoot> AutoSetArg for TextReader<'_, '_, R> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<R>()
+    }
+}
+
+impl<R: TextRoot> AutoSetArg for TextWriter<'_, '_, R> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.writes::<R>()
+    }
+}
+
 impl<P0> AutoSetArg for ParamSet<'_, '_, (P0,)>
 where
     P0: SystemParam + AutoSetArg,
@@ -491,6 +527,8 @@ impl NoInfer for &RemovedComponentEvents {}
 impl<T: FromWorld + Send> NoInfer for Local<'_, T> {}
 
 impl NoInfer for DeferredWorld<'_> {}
+
+impl<Conf: GizmoConfigGroup, Clear: Sync + Send> NoInfer for Gizmos<'_, '_, Conf, Clear> {}
 
 impl<T: SystemBuffer> NoInfer for Deferred<'_, T> {}
 
