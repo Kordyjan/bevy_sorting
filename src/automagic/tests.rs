@@ -194,6 +194,28 @@ fn queries_create_autosets() {
     assert_eq_unordered_sort!(vec![system], systems_for_set(graph, write_other_data_set))
 }
 
+#[test]
+fn query_filters_influence_autosets() {
+    let mut app = App::new();
+    app.add_systems(Update, with_query_filter.in_auto_sets());
+
+    let graph = app.get_schedule(Update).unwrap().graph();
+    let read_some_data_set = find_set(graph, "Reads(\"SomeData\")");
+    let read_other_data_set = find_set(graph, "Reads(\"OtherData\")");
+    let read_third_data_set = find_set(graph, "Reads(\"DataNumberThree\")");
+    let read_fourth_data_set = find_set(graph, "Reads(\"DataNumberFour\")");
+    let system = find_system(graph, &with_query_filter);
+
+    for set in [
+        read_some_data_set,
+        read_other_data_set,
+        read_third_data_set,
+        read_fourth_data_set,
+    ] {
+        assert_eq_unordered_sort!(vec![system], systems_for_set(graph, set));
+    }
+}
+
 fn find_set(graph: &ScheduleGraph, name: &str) -> NodeId {
     graph
         .system_sets()
@@ -262,6 +284,12 @@ struct SomeData;
 #[derive(Component)]
 struct OtherData;
 
+#[derive(Component)]
+struct DataNumberThree;
+
+#[derive(Component)]
+struct DataNumberFour;
+
 fn some_reader_only(_reader: EventReader<SomeEvent>) {}
 
 fn some_writer_only(_writer: EventWriter<SomeEvent>) {}
@@ -287,3 +315,14 @@ fn other_res_only(_resource: Res<SomethingElse>) {}
 fn resource_mixed(_read: Res<Something>, _write: ResMut<SomethingElse>) {}
 
 fn with_query(_q: Query<(&SomeData, &mut OtherData, Entity)>) {}
+
+fn with_query_filter(
+    _q: Query<
+        &SomeData,
+        (
+            With<OtherData>,
+            Or<(Added<DataNumberThree>, Changed<DataNumberFour>)>,
+        ),
+    >,
+) {
+}

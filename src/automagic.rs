@@ -4,11 +4,11 @@ use bevy::{
     core::{Name, NameOrEntity},
     diagnostic::Diagnostics,
     ecs::{
-        archetype::{Archetype, Archetypes},
+        archetype::Archetypes,
         bundle::Bundles,
         component::{ComponentIdFor, Components},
         entity::{Entities, EntityLocation},
-        query::QueryData,
+        query::{QueryData, QueryFilter},
         removal_detection::RemovedComponentEvents,
         schedule::SystemConfigs,
         system::{DynSystemParam, SystemBuffer, SystemChangeTick, SystemName},
@@ -18,11 +18,11 @@ use bevy::{
         },
     },
     prelude::{
-        AnyOf, Bundle, Commands, Component, Deferred, Entity, EntityMut, EntityRef, Event,
-        EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, Has,
-        IntoSystemConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, ParallelCommands,
+        Added, AnyOf, Bundle, Changed, Commands, Component, Deferred, Entity, EntityMut, EntityRef,
+        Event, EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, Has,
+        IntoSystemConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, Or, ParallelCommands,
         PickingEventWriters, Query, Ref, RemovedComponents, Res, ResMut, Resource,
-        SystemParamFunction, TransformHelper, World,
+        SystemParamFunction, TransformHelper, With, Without, World,
     },
     render::{
         sync_world::{MainEntity, RenderEntity},
@@ -239,9 +239,55 @@ impl AutoSetArgInQuery for Tuple {
     }
 }
 
-impl<D: AutoSetArgInQuery + QueryData> AutoSetArg for Query<'_, '_, D> {
+trait AutoSetArgInQueryFilter {
+    fn apply(sys: SystemConfigs) -> SystemConfigs;
+}
+
+impl<F: AutoSetArgInQueryFilter> AutoSetArgInQueryFilter for Or<F> {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
-        D::apply(sys)
+        F::apply(sys)
+    }
+}
+
+impl<C: Component> AutoSetArgInQueryFilter for Added<C> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<C>()
+    }
+}
+
+impl<C: Component> AutoSetArgInQueryFilter for Changed<C> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<C>()
+    }
+}
+
+impl<C: Component> AutoSetArgInQueryFilter for With<C> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<C>()
+    }
+}
+
+impl<C: Component> AutoSetArgInQueryFilter for Without<C> {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        sys.reads::<C>()
+    }
+}
+
+#[allow(clippy::let_and_return)]
+#[impl_for_tuples(0, 15)]
+impl AutoSetArgInQueryFilter for Tuple {
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        for_tuples!( #( let sys = <Tuple as AutoSetArgInQueryFilter>::apply(sys); )* );
+        sys
+    }
+}
+
+impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter> AutoSetArg
+    for Query<'_, '_, D, F>
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = D::apply(sys);
+        F::apply(sys)
     }
 }
 
