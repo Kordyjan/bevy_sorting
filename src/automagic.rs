@@ -21,8 +21,8 @@ use bevy::{
         Added, AnyOf, Bundle, Changed, Commands, Component, Deferred, Entity, EntityMut, EntityRef,
         Event, EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, Has,
         IntoSystemConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, Or, ParallelCommands,
-        PickingEventWriters, Query, Ref, RemovedComponents, Res, ResMut, Resource,
-        SystemParamFunction, TransformHelper, With, Without, World,
+        PickingEventWriters, Populated, Query, Ref, RemovedComponents, Res, ResMut, Resource,
+        Single, SystemParamFunction, TransformHelper, With, Without, World,
     },
     render::{
         sync_world::{MainEntity, RenderEntity},
@@ -284,6 +284,24 @@ impl AutoSetArgInQueryFilter for Tuple {
 
 impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter> AutoSetArg
     for Query<'_, '_, D, F>
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = D::apply(sys);
+        F::apply(sys)
+    }
+}
+
+impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter> AutoSetArg
+    for Single<'_, D, F>
+{
+    fn apply(sys: SystemConfigs) -> SystemConfigs {
+        let sys = D::apply(sys);
+        F::apply(sys)
+    }
+}
+
+impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter> AutoSetArg
+    for Populated<'_, '_, D, F>
 {
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         let sys = D::apply(sys);
