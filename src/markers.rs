@@ -1,11 +1,16 @@
 use std::{
-    any::{type_name, TypeId},
+    any::TypeId,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
     marker::PhantomData,
 };
 
-use bevy::{ecs::label, prelude::SystemSet};
+use bevy::{
+    ecs::{label, schedule::NodeConfigs},
+    prelude::{IntoSystemConfigs, System, SystemSet},
+};
+
+use tynm::type_name;
 
 /// System set marking all systems that reads value of T
 pub struct Reads<T: 'static>(PhantomData<fn() -> T>);

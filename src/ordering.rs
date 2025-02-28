@@ -1,6 +1,6 @@
 use bevy::{
 ecs::{intern::Interned, schedule::NodeConfigs},
-prelude::SystemSet,
+prelude::{IntoSystemSetConfigs as _, SystemSet},
 };
 
 use crate::markers;

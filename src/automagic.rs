@@ -34,6 +34,7 @@ use bevy::{
         picking_backend, DefaultUiCamera,
     },
 };
+use bevy_utils_proc_macros::all_tuples;
 
 use crate::IntoSystemRW;
 
@@ -309,14 +310,20 @@ impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter>
     }
 }
 
-impl <P0> AutoSetArg for ParamSet<'_, '_, (P0,)> where P0: SystemParam + AutoSetArg {
+impl<P0> AutoSetArg for ParamSet<'_, '_, (P0,)>
+where
+    P0: SystemParam + AutoSetArg,
+{
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         <P0 as AutoSetArg>::apply(sys)
     }
 }
 
-
-impl <P0, P1> AutoSetArg for ParamSet<'_, '_, (P0, P1)> where P0: SystemParam + AutoSetArg, P1: SystemParam + AutoSetArg  {
+impl<P0, P1> AutoSetArg for ParamSet<'_, '_, (P0, P1)>
+where
+    P0: SystemParam + AutoSetArg,
+    P1: SystemParam + AutoSetArg,
+{
     fn apply(sys: SystemConfigs) -> SystemConfigs {
         let sys = <P0 as AutoSetArg>::apply(sys);
         <P1 as AutoSetArg>::apply(sys)
@@ -408,7 +415,8 @@ where
     }
 }
 
-impl<P0, P1, P2, P3, P4, P5, P6, P7> AutoSetArg for ParamSet<'_, '_, (P0, P1, P2, P3, P4, P5, P6, P7)>
+impl<P0, P1, P2, P3, P4, P5, P6, P7> AutoSetArg
+    for ParamSet<'_, '_, (P0, P1, P2, P3, P4, P5, P6, P7)>
 where
     P0: SystemParam + AutoSetArg,
     P1: SystemParam + AutoSetArg,
@@ -520,3 +528,28 @@ where
         <T::Param as AutoSetArg>::apply(self.into_configs())
     }
 }
+
+pub trait InferFlowEach<Marker> {
+    type After;
+    fn each_in_auto_sets(self) -> Self::After;
+}
+
+macro_rules! impl_each {
+    ( $(($marker: ident, $sys: ident)),* ) => {
+        impl <$($marker, $sys),*> InferFlowEach<( $($marker, )* )> for ( $($sys,)* ) 
+            where $( $sys: InferFlow<$marker> ),* 
+        {
+            type After = ( $( impl_each!(@HELPER $sys), )* );
+
+            #[allow(non_snake_case)]
+            fn each_in_auto_sets(self) -> Self::After {
+                let ( $( $sys, )* ) = self;
+                ( $( $sys.in_auto_sets(), )* )
+            }
+        }
+    };
+
+    (@HELPER $discard: ident ) => { SystemConfigs };
+}
+
+all_tuples!(impl_each, 1, 32, M, S);

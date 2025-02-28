@@ -6,7 +6,7 @@ use bevy::{
     prelude::*,
 };
 
-use super::InferFlow;
+use super::{InferFlow, InferFlowEach};
 
 #[test]
 fn simple_event_sorting() {
@@ -238,6 +238,12 @@ fn big_system_test() {
     ] {
         assert_eq_unordered_sort!(vec![system], systems_for_set(graph, set));
     }
+}
+
+#[test]
+fn sanity_each() {
+    (resource_only, ).each_in_auto_sets();
+    (resource_only, resource_mut_only).each_in_auto_sets();
 }
 
 fn find_set(graph: &ScheduleGraph, name: &str) -> NodeId {
