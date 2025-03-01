@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::*;
+use crate::prelude::*;
 use bevy::prelude::*;
 
 #[test]

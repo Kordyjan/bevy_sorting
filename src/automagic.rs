@@ -36,7 +36,7 @@ use bevy::{
 };
 use bevy_utils_proc_macros::all_tuples;
 
-use crate::IntoSystemRW;
+use crate::prelude::IntoSystemRW;
 
 use impl_trait_for_tuples::impl_for_tuples;
 

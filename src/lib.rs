@@ -5,6 +5,8 @@ mod ordering;
 #[cfg(test)]
 mod tests;
 
-pub use automagic::{InferFlow, InferFlowEach};
-pub use markers::{IntoSystemRW, Reads, Writes};
-pub use ordering::{read_before_write, write_before_read};
+pub mod prelude {
+    pub use crate::automagic::{InferFlow, InferFlowEach};
+    pub use crate::markers::{IntoSystemRW, Reads, Writes};
+    pub use crate::ordering::{read_before_write, write_before_read};
+}
