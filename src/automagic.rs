@@ -514,7 +514,17 @@ impl AutoSetArg for Tuple {
     }
 }
 
-pub trait InferFlow<Marker> {
+/// System for which auto-sets ([Writes] and [Reads]) can be inferred.
+///
+/// [Writes]: crate::prelude::Writes
+/// [Reads]: crate::prelude::Reads
+pub trait InferFlow<Marker> { 
+    /// Infers auto-sets for a system. Keep in mind that it only analizes signature od the
+    /// function. So if you are using [Commands] to insert resources or components not mentioned in
+    /// the signature, you need to specify [Writes] marker manually in order to use constraint
+    /// based on this resource or component.
+    ///
+    /// [Writes]: crate::prelude::Writes
     fn in_auto_sets(self) -> SystemConfigs;
 }
 
@@ -529,8 +539,11 @@ where
     }
 }
 
+/// Group of system, for which auto-systems can be individually inferred.
 pub trait InferFlowEach<Marker> {
+    /// Type of group of [`SystemConfigs`] adter applying auto-sets.
     type After;
+    /// Infer auto-sets for a group of systems.
     fn each_in_auto_sets(self) -> Self::After;
 }
 
