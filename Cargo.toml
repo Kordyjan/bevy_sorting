@@ -12,6 +12,9 @@ repository = "https://github.com/Kordyjan/bevy_sorting"
 keywords = ["gamedev", "bevy", "ecs", "sorting", "systems"]
 categories = ["game-development"]
 
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
 [dependencies]
 bevy = "0.15.2"
 bevy_utils_proc_macros = "0.15.3"
