@@ -518,7 +518,7 @@ impl AutoSetArg for Tuple {
 ///
 /// [Writes]: crate::prelude::Writes
 /// [Reads]: crate::prelude::Reads
-pub trait InferFlow<Marker> { 
+pub trait InferFlow<Marker> {
     /// Infers auto-sets for a system. Keep in mind that it only analizes signature od the
     /// function. So if you are using [Commands] to insert resources or components not mentioned in
     /// the signature, you need to specify [Writes] marker manually in order to use constraint
@@ -549,8 +549,8 @@ pub trait InferFlowEach<Marker> {
 
 macro_rules! impl_each {
     ( $(($marker: ident, $sys: ident)),* ) => {
-        impl <$($marker, $sys),*> InferFlowEach<( $($marker, )* )> for ( $($sys,)* ) 
-            where $( $sys: InferFlow<$marker> ),* 
+        impl <$($marker, $sys),*> InferFlowEach<( $($marker, )* )> for ( $($sys,)* )
+            where $( $sys: InferFlow<$marker> ),*
         {
             type After = ( $( impl_each!(@HELPER $sys), )* );
 

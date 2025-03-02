@@ -1,5 +1,5 @@
 use std::{
-    any:: TypeId,
+    any::TypeId,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
     marker::PhantomData,

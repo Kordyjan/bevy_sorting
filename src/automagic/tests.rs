@@ -242,7 +242,7 @@ fn big_system_test() {
 
 #[test]
 fn sanity_each() {
-    (resource_only, ).each_in_auto_sets();
+    (resource_only,).each_in_auto_sets();
     (resource_only, resource_mut_only).each_in_auto_sets();
 }
 
