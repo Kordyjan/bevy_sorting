@@ -35,13 +35,13 @@ fn main() {
 }
 ```
 
-You don't need to specify system sets or chain systems. Everything will be executed in the intuitive order, with parallelization. First `finish_quests`, then `count_xp`, later both `update_stats` and `run_levelup_animation` in parallel; `update_equipment` can be run anytime after the end of `finish_quests`, possibly in parrallel with other systems. 
+You don't need to specify system sets or chain systems. Everything will be executed in the intuitive order, with parallelization. First, `finish_quests`, then `count_xp` and later both `update_stats` and `run_levelup_animation` in parallel; `update_equipment` can be run anytime after the end of `finish_quests`, possibly in parallel with other systems. 
 
 # Want to know more?
 
 ## What problem does it solve?
 
-Bevy encourages writing small, highly modular systems. They are easier to run in parallel and make code easier to maintain. However, there is a drawback. Without careful grouping, those systems can be executed in unpredictable order. In the best-case scenario, this would lead to annoying one-frame-off event handling; in the worst-case scenario, runtime panics would occur because of the wrong order of resource initialization. Overconstraining things by manually ordering everything is not only error-prone but also can lead to decreased performance, due to lack of parallel execution of systems. This library solves the problem by letting Bevy infer the data flow in systems and specify explicit and verbose constraints that allow the engine to execute systems in predictable order while still maximizing parallelism.
+Bevy encourages writing small, highly modular systems. They are easier to run in parallel and make code easier to maintain. However, there is a drawback. Without careful grouping, those systems can be executed in unpredictable order. In the best-case scenario, this would lead to annoying one-frame-off event handling; in the worst-case scenario, runtime panics would occur because of the wrong order of resource initialization. Overconstraining things by manually ordering everything is not only error-prone but also can lead to decreased performance due to the lack of parallel execution of systems. This library solves the problem by letting Bevy infer the data flow in systems and specify explicit and verbose constraints that allow the engine to execute systems in predictable order while still maximizing parallelism.
 
 ## Isn't it against Bevy's philosophy?
 
@@ -59,7 +59,7 @@ and you can start using all the library features.
 
 ### Flow inference
 
-When adding system to the schedule, you can call `.in_auto_sets()` on it. The signature of the system will be analyzed. Then the system will be added to appropriate system sets. For example
+When adding a system to the schedule, you can call `.in_auto_sets()` on it. The signature of the system will be analyzed. Then, the system will be added to appropriate system sets. For example
 
 ```rust
 fn my_system(
@@ -72,7 +72,7 @@ fn my_system(
 let app = App::new().add_systems(Update, my_system.in_auto_sets());
 ```
 
-will create three auto-sets and add `my_system` to them. Those are `Writes<Something>`, `Writes<Data>`, `Reads<Marker>` and `Reads<Happening>`. Any mutable access to resource or component, or access to `EventWriter` is treated as a write. Any immutable acces to resource or component or `EventReader` is treated as a read.
+will create three auto-sets and add `my_system` to them. Those are `Writes<Something>`, `Writes<Data>`, `Reads<Marker>` and `Reads<Happening>`. Any mutable access to a resource or component or access to `EventWriter` is treated as a write. Any immutable access to a resource or component or `EventReader` is treated as a read.
 
 It is possible to infer data flow for each system in a tuple, so there is no need for repeated calls of `.in_auto_sets()`:
 
@@ -108,7 +108,7 @@ There are two kinds of constraints:
 - `read_before_write::<SomeType>()` means that all systems that reads from `SomeType` (ie. is in the `Reads<SomeType>` auto-set) are executed before any system that writes to `SomeType`.
 - `write_before_read::<SomeType>()` means that all system that writes to `SomeType` will be executed before any system that reads from `SomeType`.
 
-You can specify those constraints caling the `configure_sets` function of `App`. So continuuing snippet from the previous section you can write:
+You can specify those constraints by calling the `configure_sets` function of `App`. So, continuing the snippet from the previous section, you can write:
 
 ```rust
 app.configure_sets(Update, (write_before_read::<Happening>(), read_before_write::<Marker>();
@@ -130,7 +130,7 @@ app.add_systems(Update,
 
 ### What types can be used in flow markers?
 
-Automatic inference creates auto-sets for components, resources and events. In manual markers you can use them, but also any rust type (as long as it is `'static`). For example if you want to group all systems manipulating or reading stats of the player, you can create unit type `PlayerStats` and use it in markers: `.writes::<PlayerStats>` and `.reads::<PlayerStats>`.
+Automatic inference creates auto-sets for components, resources, and events. In manual markers, you can use them, but also any rust type (as long as it is `'static`). For example, if you want to group all systems manipulating or reading stats of the player, you can create unit type `PlayerStats` and use it in markers: `.writes::<PlayerStats>` and `.reads::<PlayerStats>`.
 
 ## What are the simplest use cases?
 
@@ -195,15 +195,15 @@ fn main() {
 }
 ```
 
-No risk of panic during the initialization.
+There is no risk of panic during the initialization.
 
 ## What kind of systems are supported?
 
-For now only the systems that are defined as closures or function references are supported. In the future I want to support piped systems. Not much more is currently possible due to Bevy's design.
+For now, only systems defined as closures or function references are supported. In the future, I want to support piped systems. Due to Bevy's design, not much more is currently possible.
 
 ## Can I mix regular system sets with auto-sets?
 
-Of course! There is small caveat, hovever. All `in_set()` calls must be called after the `.in_auto_sets()`. Otherwise you will get compilation error. This is due to Bevy's design, and I don't think there is anything I can do about it. You can, however, freely mix `.in_set()` calls with any combination of `.writes()` and `.reads()` calls.
+Of course! There is a small caveat, however. All `in_set()` calls must be called after the `.in_auto_sets()`. Otherwise, you will get a compilation error. This is due to Bevy's design, and I don't think there is anything I can do about it. You can, however, freely mix `.in_set()` calls with any combination of `.writes()` and `.reads()` calls.
 
 ## What's next?
  - trait derivation
