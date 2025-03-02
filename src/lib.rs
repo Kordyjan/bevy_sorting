@@ -57,7 +57,7 @@
 //!
 //! ### Flow inference
 //!
-//! When adding a system to the schedule, you can call `.in_auto_sets()` on it. The signature of the system will be analyzed. Then, the system will be added to appropriate system sets. For example
+//! When adding a system to the schedule, you can call [`.in_auto_sets()`][in_auto_sets] on it. The signature of the system will be analyzed. Then, the system will be added to appropriate system sets. For example
 //!
 //! ```rust
 //! fn my_system(
@@ -70,9 +70,9 @@
 //! let app = App::new().add_systems(Update, my_system.in_auto_sets());
 //! ```
 //!
-//! will create three auto-sets and add `my_system` to them. Those are `Writes<Something>`, `Writes<Data>`, `Reads<Marker>` and `Reads<Happening>`. Any mutable access to a resource or component or access to `EventWriter` is treated as a write. Any immutable access to a resource or component or `EventReader` is treated as a read.
+//! will create three auto-sets and add `my_system` to them. Those are [`Writes<Something>`][writes], [`Writes<Data>`][writes], [`Reads<Marker>`][reads] and [`Reads<Happening>`][reads]. Any mutable access to a resource or component or access to `EventWriter` is treated as a write. Any immutable access to a resource or component or `EventReader` is treated as a read.
 //!
-//! It is possible to infer data flow for each system in a tuple, so there is no need for repeated calls of `.in_auto_sets()`:
+//! It is possible to infer data flow for each system in a tuple using [`each_in_auto_set`][each_in_auto_set]. There is no need for repeated calls of [`.in_auto_sets()`][in_auto_sets].:
 //!
 //! ```rust
 //! App::new()
@@ -103,8 +103,8 @@
 //! ### Constraints
 //!
 //! There are two kinds of constraints:
-//! - `read_before_write::<SomeType>()` means that all systems that reads from `SomeType` (ie. is in the `Reads<SomeType>` auto-set) are executed before any system that writes to `SomeType`.
-//! - `write_before_read::<SomeType>()` means that all system that writes to `SomeType` will be executed before any system that reads from `SomeType`.
+//! - [`read_before_write::<SomeType>()`][read_before_write] means that all systems that reads from `SomeType` (ie. is in the `Reads<SomeType>` auto-set) are executed before any system that writes to `SomeType`.
+//! - [`write_before_read::<SomeType>()`][write_before_read] means that all system that writes to `SomeType` will be executed before any system that reads from `SomeType`.
 //!
 //! You can specify those constraints by calling the `configure_sets` function of `App`. So, continuing the snippet from the previous section, you can write:
 //!
@@ -114,7 +114,7 @@
 //!
 //! ### Manual flow specification
 //!
-//! Not everything can be inferred from the system's function signature. Sometimes we use `Commands` to add new resource or component to existing entity. If you want to make constraints besed on those resources or entities you need to mark the data flow manually using `.reads()` and `.writes()` functions.
+//! Not everything can be inferred from the system's function signature. Sometimes we use `Commands` to add new resource or component to existing entity. If you want to make constraints besed on those resources or entities you need to mark the data flow manually using [`.reads()`][readsfn] and [`.writes()`][writesfn] functions.
 //!
 //! ```rust
 //! app.add_systems(Update,
@@ -201,7 +201,16 @@
 //!
 //! ## Can I mix regular system sets with auto-sets?
 //!
-//! Of course! There is a small caveat, however. All `in_set()` calls must be called after the `.in_auto_sets()`. Otherwise, you will get a compilation error. This is due to Bevy's design, and I don't think there is anything I can do about it. You can, however, freely mix `.in_set()` calls with any combination of `.writes()` and `.reads()` calls.
+//! Of course! There is a small caveat, however. All `in_set()` calls must be called after the [`.in_auto_sets()`][in_auto_sets]. Otherwise, you will get a compilation error. This is due to Bevy's design, and I don't think there is anything I can do about it. You can, however, freely mix `.in_set()` calls with any combination of `.writes()` and `.reads()` calls.
+//!
+//! [in_auto_sets]:crate::automagic::InferFlow::in_auto_sets
+//! [writes]:crate::markers::Writes
+//! [reads]:crate::markers::Reads
+//! [writesfn]:crate::markers::IntoSystemRW::writes
+//! [readsfn]:crate::markers::IntoSystemRW::reads
+//! [write_before_read]:crate::ordering::write_before_read
+//! [read_before_write]:crate::ordering::read_before_write
+//! [each_in_auto_set]:crate::automagic::InferFlowEach::each_in_auto_sets
 
 mod automagic;
 mod markers;
