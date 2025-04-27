@@ -1,16 +1,19 @@
 use std::marker::PhantomData;
 
+use bevy::prelude::{BevyError, System};
 use bevy::{
-    core::{Name, NameOrEntity},
     diagnostic::Diagnostics,
     ecs::{
         archetype::Archetypes,
         bundle::Bundles,
         component::{ComponentIdFor, Components},
         entity::{Entities, EntityLocation},
+        name::{Name, NameOrEntity},
         query::{QueryData, QueryFilter},
         removal_detection::RemovedComponentEvents,
-        schedule::SystemConfigs,
+        schedule::graph::GraphInfo,
+        schedule::ScheduleConfigs,
+        schedule::{Chain, Schedulable},
         system::{DynSystemParam, SystemBuffer, SystemChangeTick, SystemName, SystemParam},
         world::{
             DeferredWorld, EntityMutExcept, EntityRefExcept, FilteredEntityMut, FilteredEntityRef,
@@ -20,7 +23,7 @@ use bevy::{
     prelude::{
         Added, AnyOf, Bundle, Changed, Commands, Component, Deferred, Entity, EntityMut, EntityRef,
         Event, EventReader, EventWriter, FilteredResources, FilteredResourcesMut, FromWorld, Has,
-        IntoSystemConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, Or, ParallelCommands,
+        IntoScheduleConfigs, Local, MeshRayCast, Mut, NonSend, NonSendMut, Or, ParallelCommands,
         ParamSet, PickingEventWriters, Populated, Query, Ref, RemovedComponents, Res, ResMut,
         Resource, Single, SystemParamFunction, TransformHelper, With, Without, World,
     },
@@ -28,11 +31,7 @@ use bevy::{
         sync_world::{MainEntity, RenderEntity},
         texture::FallbackImageMsaa,
     },
-    ui::{
-        self,
-        experimental::{UiChildren, UiRootNodes},
-        picking_backend, DefaultUiCamera,
-    },
+    ui::{self, experimental::UiChildren, picking_backend, DefaultUiCamera},
 };
 use bevy_utils_proc_macros::all_tuples;
 
@@ -44,189 +43,283 @@ use impl_trait_for_tuples::impl_for_tuples;
 mod tests;
 
 trait AutoSetArg {
-    fn apply(sys: SystemConfigs) -> SystemConfigs;
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>;
 }
 
 impl<E: Event> AutoSetArg for EventReader<'_, '_, E> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<E>()
     }
 }
 
 impl<E: Event> AutoSetArg for EventWriter<'_, E> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.writes::<E>()
     }
 }
 
 impl<R: Resource> AutoSetArg for Res<'_, R> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<R>()
     }
 }
 
 impl<R: Resource> AutoSetArg for ResMut<'_, R> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.writes::<R>()
     }
 }
 
 impl<T: 'static> AutoSetArg for NonSend<'_, T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<T>()
     }
 }
 
 impl<T: 'static> AutoSetArg for NonSendMut<'_, T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.writes::<T>()
     }
 }
 
 impl<T: AutoSetArg> AutoSetArg for Option<T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         T::apply(sys)
     }
 }
 
 trait AutoSetArgInQuery {
-    fn apply(sys: SystemConfigs) -> SystemConfigs;
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>;
 }
 
 impl<T: Component> AutoSetArgInQuery for &T {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<T>()
     }
 }
 
 impl<T: Component> AutoSetArgInQuery for Ref<'_, T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<T>()
     }
 }
 
 impl<T: Component> AutoSetArgInQuery for &mut T {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.writes::<T>()
     }
 }
 
 impl<T: Component> AutoSetArgInQuery for Mut<'_, T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.writes::<T>()
     }
 }
 
 impl<T: Component> AutoSetArgInQuery for Has<T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<T>()
     }
 }
 
 impl<T: AutoSetArgInQuery> AutoSetArgInQuery for Option<T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         T::apply(sys)
     }
 }
 
 impl<T: AutoSetArgInQuery> AutoSetArgInQuery for AnyOf<T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         T::apply(sys)
     }
 }
 
 impl AutoSetArgInQuery for NameOrEntity {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<Name>()
     }
 }
 
 impl<T> AutoSetArgInQuery for PhantomData<T> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for Entity {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for MainEntity {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for RenderEntity {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for picking_backend::NodeQuery {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for picking_backend::NodeQueryReadOnly {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for ui::NodeQuery {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for ui::NodeQueryReadOnly {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for EntityLocation {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for EntityMut<'_> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for EntityRef<'_> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for FilteredEntityMut<'_> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl AutoSetArgInQuery for FilteredEntityRef<'_> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl<B: Bundle> AutoSetArgInQuery for EntityMutExcept<'_, B> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
 
 impl<B: Bundle> AutoSetArgInQuery for EntityRefExcept<'_, B> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
@@ -234,42 +327,62 @@ impl<B: Bundle> AutoSetArgInQuery for EntityRefExcept<'_, B> {
 #[allow(clippy::let_and_return)]
 #[impl_for_tuples(0, 15)]
 impl AutoSetArgInQuery for Tuple {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         for_tuples!( #( let sys = <Tuple as AutoSetArgInQuery>::apply(sys); )* );
         sys
     }
 }
 
 trait AutoSetArgInQueryFilter {
-    fn apply(sys: SystemConfigs) -> SystemConfigs;
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>;
 }
 
 impl<F: AutoSetArgInQueryFilter> AutoSetArgInQueryFilter for Or<F> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         F::apply(sys)
     }
 }
 
 impl<C: Component> AutoSetArgInQueryFilter for Added<C> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<C>()
     }
 }
 
 impl<C: Component> AutoSetArgInQueryFilter for Changed<C> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<C>()
     }
 }
 
 impl<C: Component> AutoSetArgInQueryFilter for With<C> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<C>()
     }
 }
 
 impl<C: Component> AutoSetArgInQueryFilter for Without<C> {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys.reads::<C>()
     }
 }
@@ -277,7 +390,10 @@ impl<C: Component> AutoSetArgInQueryFilter for Without<C> {
 #[allow(clippy::let_and_return)]
 #[impl_for_tuples(0, 15)]
 impl AutoSetArgInQueryFilter for Tuple {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         for_tuples!( #( let sys = <Tuple as AutoSetArgInQueryFilter>::apply(sys); )* );
         sys
     }
@@ -286,7 +402,10 @@ impl AutoSetArgInQueryFilter for Tuple {
 impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter> AutoSetArg
     for Query<'_, '_, D, F>
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = D::apply(sys);
         F::apply(sys)
     }
@@ -295,7 +414,10 @@ impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter>
 impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter> AutoSetArg
     for Single<'_, D, F>
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = D::apply(sys);
         F::apply(sys)
     }
@@ -304,7 +426,10 @@ impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter>
 impl<D: AutoSetArgInQuery + QueryData, F: AutoSetArgInQueryFilter + QueryFilter> AutoSetArg
     for Populated<'_, '_, D, F>
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = D::apply(sys);
         F::apply(sys)
     }
@@ -314,7 +439,10 @@ impl<P0> AutoSetArg for ParamSet<'_, '_, (P0,)>
 where
     P0: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         <P0 as AutoSetArg>::apply(sys)
     }
 }
@@ -324,7 +452,10 @@ where
     P0: SystemParam + AutoSetArg,
     P1: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = <P0 as AutoSetArg>::apply(sys);
         <P1 as AutoSetArg>::apply(sys)
     }
@@ -336,7 +467,10 @@ where
     P1: SystemParam + AutoSetArg,
     P2: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = <P0 as AutoSetArg>::apply(sys);
         let sys = <P1 as AutoSetArg>::apply(sys);
         <P2 as AutoSetArg>::apply(sys)
@@ -350,7 +484,10 @@ where
     P2: SystemParam + AutoSetArg,
     P3: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = <P0 as AutoSetArg>::apply(sys);
         let sys = <P1 as AutoSetArg>::apply(sys);
         let sys = <P2 as AutoSetArg>::apply(sys);
@@ -366,7 +503,10 @@ where
     P3: SystemParam + AutoSetArg,
     P4: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = <P0 as AutoSetArg>::apply(sys);
         let sys = <P1 as AutoSetArg>::apply(sys);
         let sys = <P2 as AutoSetArg>::apply(sys);
@@ -384,7 +524,10 @@ where
     P4: SystemParam + AutoSetArg,
     P5: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = <P0 as AutoSetArg>::apply(sys);
         let sys = <P1 as AutoSetArg>::apply(sys);
         let sys = <P2 as AutoSetArg>::apply(sys);
@@ -404,7 +547,10 @@ where
     P5: SystemParam + AutoSetArg,
     P6: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = <P0 as AutoSetArg>::apply(sys);
         let sys = <P1 as AutoSetArg>::apply(sys);
         let sys = <P2 as AutoSetArg>::apply(sys);
@@ -427,7 +573,10 @@ where
     P6: SystemParam + AutoSetArg,
     P7: SystemParam + AutoSetArg,
 {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         let sys = <P0 as AutoSetArg>::apply(sys);
         let sys = <P1 as AutoSetArg>::apply(sys);
         let sys = <P2 as AutoSetArg>::apply(sys);
@@ -469,8 +618,6 @@ impl NoInfer for FallbackImageMsaa<'_> {}
 
 impl NoInfer for UiChildren<'_, '_> {}
 
-impl NoInfer for UiRootNodes<'_, '_> {}
-
 impl NoInfer for WorldId {}
 
 impl NoInfer for DynSystemParam<'_, '_> {}
@@ -500,7 +647,10 @@ impl<T: Component> NoInfer for RemovedComponents<'_, '_, T> {}
 impl<T: Component> NoInfer for ComponentIdFor<'_, T> {}
 
 impl<T: NoInfer> AutoSetArg for T {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         sys
     }
 }
@@ -508,7 +658,10 @@ impl<T: NoInfer> AutoSetArg for T {
 #[allow(clippy::let_and_return)]
 #[impl_for_tuples(0, 15)]
 impl AutoSetArg for Tuple {
-    fn apply(sys: SystemConfigs) -> SystemConfigs {
+    fn apply<S>(sys: ScheduleConfigs<S>) -> ScheduleConfigs<S>
+    where
+        S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    {
         for_tuples!( #( let sys = <Tuple as AutoSetArg>::apply(sys); )* );
         sys
     }
@@ -518,41 +671,47 @@ impl AutoSetArg for Tuple {
 ///
 /// [Writes]: crate::prelude::Writes
 /// [Reads]: crate::prelude::Reads
-pub trait InferFlow<Marker> {
+pub trait InferFlow<S, Marker>
+where
+    S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+{
     /// Infers auto-sets for a system. Keep in mind that it only analizes signature od the
     /// function. So if you are using [Commands] to insert resources or components not mentioned in
     /// the signature, you need to specify [Writes] marker manually in order to use constraint
     /// based on this resource or component.
     ///
     /// [Writes]: crate::prelude::Writes
-    fn in_auto_sets(self) -> SystemConfigs;
+    fn in_auto_sets(self) -> ScheduleConfigs<S>;
 }
 
-impl<T, M> InferFlow<M> for T
+impl<T, M> InferFlow<Box<(dyn System<In = (), Out = Result<(), BevyError>> + 'static)>, M> for T
 where
     T::Param: AutoSetArg,
     T: SystemParamFunction<M, In = (), Out = ()>,
     M: 'static,
 {
-    fn in_auto_sets(self) -> SystemConfigs {
+    fn in_auto_sets(
+        self,
+    ) -> ScheduleConfigs<Box<(dyn System<In = (), Out = Result<(), BevyError>> + 'static)>> {
         <T::Param as AutoSetArg>::apply(self.into_configs())
     }
 }
 
 /// Group of system, for which auto-systems can be individually inferred.
-pub trait InferFlowEach<Marker> {
-    /// Type of group of [`SystemConfigs`] adter applying auto-sets.
+pub trait InferFlowEach<Sch, Marker> {
+    /// Type of group of [`ScheduleConfigs`] adter applying auto-sets.
     type After;
     /// Infer auto-sets for a group of systems.
     fn each_in_auto_sets(self) -> Self::After;
 }
 
 macro_rules! impl_each {
-    ( $(($marker: ident, $sys: ident)),* ) => {
-        impl <$($marker, $sys),*> InferFlowEach<( $($marker, )* )> for ( $($sys,)* )
-            where $( $sys: InferFlow<$marker> ),*
+    ( $(($marker: ident, $sch: ident, $sys: ident)),* ) => {
+        impl <$($marker, $sch, $sys),*> InferFlowEach<( $($sch, )* ), ( $($marker, )* )> for ( $($sys,)* )
+            where $( $sys: InferFlow<$sch, $marker>, )*
+                $ ( $sch: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain> ),*
         {
-            type After = ( $( impl_each!(@HELPER $sys), )* );
+            type After = ( $(ScheduleConfigs<$sch>,)* );
 
             #[allow(non_snake_case)]
             fn each_in_auto_sets(self) -> Self::After {
@@ -561,8 +720,6 @@ macro_rules! impl_each {
             }
         }
     };
-
-    (@HELPER $discard: ident ) => { SystemConfigs };
 }
 
-all_tuples!(impl_each, 1, 32, M, S);
+all_tuples!(impl_each, 1, 32, M, C, S);

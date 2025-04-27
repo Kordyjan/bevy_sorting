@@ -1,4 +1,4 @@
-use std::{collections::HashMap, vec};
+use std::{any, collections::HashMap, vec};
 
 use assert_unordered::assert_eq_unordered_sort;
 use bevy::{
@@ -263,11 +263,12 @@ fn find_set_pair(graph: &ScheduleGraph, type_name: &str) -> (NodeId, NodeId) {
 
 fn find_system<I: SystemInput, O, M, T: IntoSystem<I, O, M>>(
     graph: &ScheduleGraph,
-    fun: &T,
+    _: &T,
 ) -> NodeId {
+    let name = any::type_name::<T>();
     graph
         .systems()
-        .find(|s| s.1.type_id() == fun.system_type_id())
+        .find(|s| s.1.name() == name)
         .map(|s| s.0)
         .unwrap()
 }

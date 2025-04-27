@@ -6,10 +6,12 @@ use std::{
 };
 
 use bevy::{
-    ecs::{label, schedule::NodeConfigs},
-    prelude::{IntoSystemConfigs, System, SystemSet},
+    ecs::{
+        label,
+        schedule::{graph::GraphInfo, Chain, Schedulable, ScheduleConfigs},
+    },
+    prelude::{IntoScheduleConfigs, SystemSet},
 };
-
 use tynm::type_name;
 
 /// System set marking all systems that reads value of T
@@ -111,16 +113,24 @@ impl<T> SystemSet for Writes<T> {
 }
 
 /// Extension trait for systems allowing to clearly specify read and write constraint
-pub trait IntoSystemRW<M>: IntoSystemConfigs<M> {
+pub trait IntoSystemRW<S, M>: IntoScheduleConfigs<S, M>
+where
+    S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+{
     /// Specifies that system reads from T
-    fn reads<T: 'static>(self) -> NodeConfigs<Box<dyn System<In = (), Out = ()>>> {
+    fn reads<T: 'static>(self) -> ScheduleConfigs<S> {
         self.in_set(Reads::<T>::default())
     }
 
     /// Specifies that system writes to T
-    fn writes<T: 'static>(self) -> NodeConfigs<Box<dyn System<In = (), Out = ()>>> {
+    fn writes<T: 'static>(self) -> ScheduleConfigs<S> {
         self.in_set(Writes::<T>::default())
     }
 }
 
-impl<M, S: IntoSystemConfigs<M>> IntoSystemRW<M> for S {}
+impl<M, S, I> IntoSystemRW<S, M> for I
+where
+    S: Schedulable<Metadata = GraphInfo, GroupMetadata = Chain>,
+    I: IntoScheduleConfigs<S, M>,
+{
+}

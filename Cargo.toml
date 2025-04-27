@@ -16,7 +16,7 @@ categories = ["game-development"]
 pedantic = { level = "warn", priority = -1 }
 
 [dependencies]
-bevy = "^0.15"
+bevy = "^0.16"
 bevy_utils_proc_macros = "^0.15"
 impl-trait-for-tuples = "^0.2.3"
 tynm = "^0.1.10"
